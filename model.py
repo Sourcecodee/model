@@ -31,9 +31,6 @@ class DepressionDetectionModel:
         self.history = None
         self.class_names = ['No Depression', 'Depression']
         
-        # Initialize ethical considerations
-        self.fairness_metrics = {}
-        self.demographic_data = {}  # To track performance across groups
         
         # Data augmentation
         self.augmentation = A.Compose([
@@ -50,21 +47,18 @@ class DepressionDetectionModel:
         
     def load_and_preprocess_data(self):
         """
-        Load CK+, CASME II, and SAMM datasets, preprocess them, and create train/test splits.
+        Load CK+, CASME II, or SAMM datasets, preprocess them, and create train/test splits.
         Handles both posed (CK+) and spontaneous (CASME II/SAMM) expressions.
         """
         print("Loading and preprocessing data...")
         
-        # Placeholder for dataset loading - you'll need to implement actual loading
-        # This is a simplified version - real implementation would handle each dataset's structure
-        
-        # Simulated data loading (replace with actual dataset loading)
+        # Simulated data loading
         posed_images, posed_labels = self._load_ckplus()
-        spontaneous_images, spontaneous_labels = self._load_spontaneous_datasets()
+        # spontaneous_images, spontaneous_labels = self._load_spontaneous_datasets()
         
         # Combine datasets
-        all_images = np.concatenate([posed_images, spontaneous_images])
-        all_labels = np.concatenate([posed_labels, spontaneous_labels])
+        all_images = np.concatenate([posed_images])
+        all_labels = np.concatenate([posed_labels])
         
         # Split into train/test with stratification
         X_train, X_test, y_train, y_test = train_test_split(
@@ -85,7 +79,7 @@ class DepressionDetectionModel:
         
         data = pd.read_csv(csv_path)
 
-        # Define emotion mapping (customize as needed for depression detection)
+        # Define emotion mapping
         # Example: group emotions to binary class (0 = non-depressed, 1 = depressed)
         depression_emotions = [0, 2, 4]  # Angry, Fear, Sad = Depressed
         non_depression_emotions = [1, 3, 5, 6]  # Disgust, Happy, Surprise, Neutral
@@ -107,7 +101,7 @@ class DepressionDetectionModel:
                 continue  # skip if not mapped
 
             pixels = np.fromstring(row['pixels'], sep=' ', dtype=np.uint8)
-            img = pixels.reshape((48, 48))  # FER2013 images are 48x48 grayscale
+            img = pixels.reshape((48, 48))
             img = cv2.resize(img, self.img_size)
             X.append(img)
             y.append(label)
@@ -317,44 +311,6 @@ class DepressionDetectionModel:
             'auc': roc_auc
         }
     
-    def analyze_fairness(self, X_test, y_test, demographic_data):
-        """
-        Analyze model performance across different demographic groups
-        to identify potential biases.
-        """
-        print("Analyzing model fairness...")
-        
-        X_test = np.expand_dims(X_test, axis=-1)
-        y_pred = (self.model.predict(X_test) > 0.5).astype(int)
-        
-        # Example demographic analysis (adapt based on your metadata)
-        for group_name, group_indices in demographic_data.items():
-            group_y_test = y_test[group_indices]
-            group_y_pred = y_pred[group_indices]
-            
-            accuracy = accuracy_score(group_y_test, group_y_pred)
-            precision = precision_score(group_y_test, group_y_pred)
-            recall = recall_score(group_y_test, group_y_pred)
-            f1 = f1_score(group_y_test, group_y_pred)
-            
-            self.fairness_metrics[group_name] = {
-                'accuracy': accuracy,
-                'precision': precision,
-                'recall': recall,
-                'f1': f1,
-                'support': len(group_indices)
-            }
-        
-        print("\nFairness Analysis:")
-        for group, metrics in self.fairness_metrics.items():
-            print(f"\nGroup: {group}")
-            print(f"  Accuracy: {metrics['accuracy']:.3f}")
-            print(f"  Precision: {metrics['precision']:.3f}")
-            print(f"  Recall: {metrics['recall']:.3f}")
-            print(f"  F1: {metrics['f1']:.3f}")
-            print(f"  Samples: {metrics['support']}")
-        
-        return self.fairness_metrics
     
     def visualize_activations(self, sample_image):
         """Visualize what the model is focusing on using Grad-CAM"""
@@ -421,7 +377,7 @@ class DepressionDetectionModel:
         
         return superimposed_img
 
-# Example usage
+# A test to see the performance of the model
 if __name__ == "__main__":
     # Initialize model
     depression_detector = DepressionDetectionModel(
@@ -442,10 +398,6 @@ if __name__ == "__main__":
     
     # Evaluate on test set
     metrics = depression_detector.evaluate(X_test, y_test)
-    
-    # Fairness analysis (requires demographic metadata)
-    # demographic_data = {'gender': {'male': male_indices, 'female': female_indices}}
-    # fairness_metrics = depression_detector.analyze_fairness(X_test, y_test, demographic_data)
     
     # Visualize activations for a sample
     sample_idx = np.random.randint(0, len(X_test))
