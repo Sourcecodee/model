@@ -1,0 +1,5 @@
+https://dcapswoz.ict.usc.edu/: This is the link to the dataset to use
+
+https://paperswithcode.com/paper/avec-2016-depression-mood-and-emotion/review/
+
+https://www.kaggle.com/datasets/davilsena/ckdataset/data
