@@ -1,1 +1,2 @@
-python 3.9 was used ecause tensorflow is not supported by other version
+python 3.10 was used because tensorflow is not supported by other version
+tensorflow version 2.15
