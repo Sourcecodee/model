@@ -54,11 +54,11 @@ class DepressionDetectionModel:
         
         # Simulated data loading
         posed_images, posed_labels = self._load_ckplus()
-        # spontaneous_images, spontaneous_labels = self._load_spontaneous_datasets()
+        spontaneous_images, spontaneous_labels = self._load_spontaneous_datasets()
         
         # Combine datasets
-        all_images = np.concatenate([posed_images])
-        all_labels = np.concatenate([posed_labels])
+        all_images = np.concatenate([posed_images, spontaneous_images])
+        all_labels = np.concatenate([posed_labels, spontaneous_labels])
         
         # Split into train/test with stratification
         X_train, X_test, y_train, y_test = train_test_split(
@@ -109,43 +109,44 @@ class DepressionDetectionModel:
 
         return X, y
     
-    def _load_spontaneous_datasets(self):
-        """Load and preprocess CASME II and SAMM datasets (spontaneous micro-expressions)"""
-        # Implement actual loading of spontaneous datasets
-        print("Loading spontaneous micro-expression datasets...")
+    def _load_spontaneous_datasets(self, xlsx_path='CASME2-coding-20140508.xlsx'):
+        """Load and preprocess CASME II dataset from XLSX file"""
+        print("Loading CASME II dataset...")
+        df = pd.read_excel(xlsx_path)
+        
         images = []
         labels = []
         
-        # Example for CASME II (adapt to your actual dataset)
-        casme_data = pd.read_excel(os.path.join(self.casme_path, 'CASME II_label_ver.xlsx'))
+        # Define depression-indicative emotions
+        depressive_emotions = ['sadness', 'fear', 'disgust']  # update as needed
         
-        for idx, row in casme_data.iterrows():
+        for _, row in df.iterrows():
             subject = row['Subject']
-            onset_frame = row['OnsetFrame']
-            apex_frame = row['ApexFrame']
-            emotion = row['Emotion']
+            folder = row['Filename']
+            onset = int(row['OnsetFrame'])
+            apex = int(row['ApexFrame'])
+            emotion = row['Estimated Emotion'].lower()
             
-            # Determine if this micro-expression indicates depression
-            # This is simplified - you'd need clinical validation
-            label = 1 if emotion in ['sad', 'fear', 'disgust'] else 0
+            # Convert emotion to binary label
+            label = 1 if emotion in depressive_emotions else 0
             
-            # Load the image sequence
-            subject_path = os.path.join(self.casme_path, f'sub{subject:02d}')
+            # Adjust path to your frame folders
+            subject_path = os.path.join(self.casme_path, f'sub{subject:02d}', folder)
             if os.path.exists(subject_path):
                 img_files = sorted([f for f in os.listdir(subject_path) if f.endswith('.jpg')])
-                for frame_idx in range(onset_frame, apex_frame + 1):
-                    if frame_idx <= len(img_files):
+                
+                for frame_idx in range(onset, apex + 1):
+                    if frame_idx - 1 < len(img_files):
                         img_path = os.path.join(subject_path, img_files[frame_idx - 1])
                         img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-                        img = cv2.resize(img, self.img_size)
-                        img = img.astype('float32') / 255.0
-                        images.append(img)
-                        labels.append(label)
-        
-        # Similar loading for SAMM dataset...
+                        if img is not None:
+                            img = cv2.resize(img, self.img_size)
+                            img = img.astype('float32') / 255.0
+                            images.append(img)
+                            labels.append(label)
         
         return np.array(images), np.array(labels)
-    
+
     def build_model(self, input_shape=(224, 224, 1)):
         """Build the CNN model, optionally using transfer learning"""
         print("Building model...")
